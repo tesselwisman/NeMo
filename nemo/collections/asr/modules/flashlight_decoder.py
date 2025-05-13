@@ -205,7 +205,10 @@ class FlashLightKenLMBeamSearchDecoder(NeuralModule):
                 w: [[w]]
                 for w in self.tokenizer_wrapper.vocab + ([] if '<unk>' in self.tokenizer_wrapper.vocab else ['<unk>'])
             }
-            self.word_dict = create_word_dict(d)
+            self.word_dict = create_word_dict({'<unk>': [['<unk>']]})
+            for i in range(1024):
+                self.word_dict.add_entry(str(i), i)
+            # self.word_dict = create_word_dict(d)
             self.lm = KenLM(lm_path, self.word_dict)
             self.decoder_opts = LexiconFreeDecoderOptions(
                 beam_size=beam_size,
