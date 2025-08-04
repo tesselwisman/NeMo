@@ -114,7 +114,6 @@ def get_buffered_pred_feat_rnnt(
     wrapped_hyps = wrap_transcription(hyps)
     return wrapped_hyps
 
-
 def get_buffered_pred_feat(
     asr: FrameBatchASR,
     frame_len: float,
@@ -138,6 +137,7 @@ def get_buffered_pred_feat(
     preprocessor.to(device)
     hyps = []
     refs = []
+    logits = []
 
     if filepaths and manifest:
         raise ValueError("Please select either filepaths or manifest")
@@ -148,8 +148,9 @@ def get_buffered_pred_feat(
         for L in tqdm(filepaths, desc="Sample:"):
             asr.reset()
             asr.read_audio_file(L, delay, model_stride_in_secs)
-            hyp = asr.transcribe(tokens_per_chunk, delay)
+            hyp, logit = asr.transcribe(tokens_per_chunk, delay, keep_logits=True)
             hyps.append(hyp)
+            logits.append(logit)
     else:
         with open(manifest, "r", encoding='utf_8') as mfst_f:
             for L in tqdm(mfst_f, desc="Sample:"):
@@ -163,8 +164,10 @@ def get_buffered_pred_feat(
                 audio_file = get_full_path(audio_file=row['audio_filepath'], manifest_file=manifest)
                 # do not support partial audio
                 asr.read_audio_file(audio_file, delay, model_stride_in_secs)
-                hyp = asr.transcribe(tokens_per_chunk, delay)
+                hyp, logit = asr.transcribe(tokens_per_chunk, delay, keep_logits=True)
                 hyps.append(hyp)
+                logits.append(logit)
+
 
     if os.environ.get('DEBUG', '0') in ('1', 'y', 't'):
         if len(refs) == 0:
@@ -176,8 +179,8 @@ def get_buffered_pred_feat(
                 print("hyp:", hyp)
                 print("ref:", ref)
 
-    wrapped_hyps = wrap_transcription(hyps)
-    return wrapped_hyps
+    wrapped_hyps = wrap_transcription(hyps, logits)
+    return wrapped_hyps, logits
 
 
 def get_buffered_pred_feat_multitaskAED(
@@ -249,14 +252,14 @@ def get_buffered_pred_feat_multitaskAED(
     return wrapped_hyps
 
 
-def wrap_transcription(hyps: List[str]) -> List[rnnt_utils.Hypothesis]:
+def wrap_transcription(hyps: List[str], logits: List) -> List[rnnt_utils.Hypothesis]:
     """Wrap transcription to the expected format in func write_transcription"""
     if isinstance(hyps[0], rnnt_utils.Hypothesis):
         return hyps
 
     wrapped_hyps = []
     for hyp in hyps:
-        hypothesis = rnnt_utils.Hypothesis(score=0.0, y_sequence=[], text=hyp)
+        hypothesis = rnnt_utils.Hypothesis(score=0.0, y_sequence=logits, text=hyp)
         wrapped_hyps.append(hypothesis)
     return wrapped_hyps
 

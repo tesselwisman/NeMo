@@ -854,6 +854,38 @@ class FrameBatchASR:
         hypothesis = self.tokenizer.ids_to_text(decoded_prediction)
         return hypothesis
 
+    def split_tensor_on_silence(self, mask: torch.Tensor, logits: torch.Tensor, min_block_len: int = 10):
+        is_silence = (mask == self.blank_id).int()
+        padded = torch.nn.functional.pad(is_silence, (1, 1))  # Pad to detect edge transitions
+        diff = torch.diff(padded)
+
+        # Find start and end indices of each silence block
+        starts = (diff == 1).nonzero(as_tuple=True)[0]
+        ends = (diff == -1).nonzero(as_tuple=True)[0]
+        splits = []
+        prev_end = 0
+        for start, end in zip(starts, ends):
+            silence_len = end - start
+
+            # If silence block is at least min_block_len and we are not starting or ending
+            if silence_len >= min_block_len:
+                slice_point = start + silence_len // 2
+
+
+                # Chunk before midpoint
+                chunk = logits[prev_end : slice_point, :]
+                splits.append(chunk)
+
+                # Set start of next chunk after midpoint
+                prev_end = slice_point
+                
+
+        # Add the final chunk
+        if prev_end < len(mask):
+            splits.append(logits[prev_end:])
+
+        return splits
+
 
 class BatchedFeatureFrameBufferer(FeatureFrameBufferer):
     """
