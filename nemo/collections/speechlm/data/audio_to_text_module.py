@@ -1,4 +1,4 @@
-# Copyright (c) 2024, NVIDIA CORPORATION.  All rights reserved.
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -185,6 +185,7 @@ class AudioToTextDataModule(pl.LightningDataModule, IOMixin):
                 pad_to_max_length=data_cfg.get('pad_to_max_length', False),
                 max_seq_length=data_cfg["max_seq_length"],
                 context_key=data_cfg.get('context_key'),
+                answer_key=data_cfg.get('answer_key'),
                 default_context_key=data_cfg.get('default_context_key', 'default_context'),
                 answer_only_loss=data_cfg.get('answer_only_loss', True),
                 is_train=(mode == 'train'),
